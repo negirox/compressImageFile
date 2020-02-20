@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+   <head>
+      <title></title>
+   </head>
+   <body>
+      <input id="file" type="file" />
+      <br /><span id="message"></span><br />
+      <div id="img"></div>
+   </body>
+   <script>
+var MAX_WIDTH=300,MAX_HEIGHT=300;
+var Resize= (function(canvas) {
+    function Resize(img, width, height, onResize) {
+        var
+            load = typeof img == "string",
+            i = load || img;
+        if (load) {
+            i = new Image;
+            i.onload = onload;
+            i.onerror = onerror;
+        }
+        i._onResize= onResize;
+        i._width = width;
+        i._height = height;
+        load ? (i.src = img) : onload.call(img);
+    }
+
+    function onerror() {
+        throw ("not found: " + this.src);
+    }
+
+    function onload() {
+        var
+            img = this,
+            width = img._width,
+            height = img._height,
+            onResize= img._onResize;
+        width == null && (width = round(img.width * height / img.height));
+        height == null && (height = round(img.height * width / img.width));
+        delete img._onResize;
+        delete img._width;
+        delete img._height;
+        canvas.width = width;
+        canvas.height = height;
+        context.drawImage(
+            img,
+            0,
+            0,
+            img.width,
+            img.height,
+            0,
+            0,
+            width,
+            height
+        );
+        onResize(canvas.toDataURL("image/png"));
+    }
+
+    var
+        context = canvas.getContext("2d"),
+        round = Math.round;
+
+    return Resize;
+
+}(
+    this.document.createElement("canvas")));
+(function(global, $file, $message, $img) {
+
+
+    if (!global.FileReader)
+        return $message.innerHTML = "FileReader API not supported";
+
+    function Resized(data) {
+        $message.innerHTML = "done";
+        ($img.lastChild || $img.appendChild(new Image)).src = data;
+    }
+
+    function load(e) {
+        $message.innerHTML = "resampling ...";
+        Resize(
+            this.result,
+            this._width || null,
+            this._height || null,
+            Resized
+        );
+
+    }
+
+    function abort(e) {
+        $message.innerHTML = "operation aborted";
+    }
+
+    function error(e) {
+        $message.innerHTML = "Error: " + (this.result || e);
+    }
+
+    $file.addEventListener("change", function change() {
+        var
+            width = parseInt(MAX_WIDTH, 10),
+            height = parseInt(MAX_HEIGHT, 10),
+            file;
+        if (!width && !height) {
+            $file.parentNode.replaceChild(
+                file = $file.cloneNode(false),
+                $file
+            );
+            $file.removeEventListener("change", change, false);
+            ($file = file).addEventListener("change", change, false);
+            $message.innerHTML = "please specify width or height";
+        } else if (
+            ($file.files || []).length &&
+            /^image\//.test((file = $file.files[0]).type)
+        ) {
+            $message.innerHTML = "reading ...";
+            file = new FileReader;
+            file.onload = load;
+            file.onabort = abort;
+            file.onerror = error;
+            file._width = width;
+            file._height = height;
+            file.readAsDataURL($file.files[0]);
+        } else if (file) {
+            $message.innerHTML = "please chose an image";
+        } else {
+            $message.innerHTML = "nothing to do";
+        }
+    }, false);
+}(
+    this,    document.getElementById("file"),
+    document.getElementById("message"),
+    document.getElementById("img")
+));
+   </script>
+</html>
